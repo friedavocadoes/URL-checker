@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: |
+          jq empty extension/manifest.json
+          echo "manifest.json is valid JSON"
+          jq -r '"manifest_version=\(.manifest_version) name=\(.name) version=\(.version)"' extension/manifest.json
+
+      - name: Check required extension files
+        run: |
+          for f in extension/manifest.json extension/popup.html extension/popup.js extension/popup.css extension/background.js extension/icons/icon16.png extension/icons/icon48.png extension/icons/icon128.png; do
+            if [ -f "$f" ]; then echo "✓ $f"; else echo "✗ Missing $f" && exit 1; fi
+          done
+
+      - name: JS syntax check
+        run: |
+          node --check extension/popup.js && echo "popup.js ok"
+          node --check extension/background.js && echo "background.js ok"
+
+      - name: Python compile check (desktop fallback)
+        run: |
+          python -m py_compile main.py && echo "main.py ok"
+          python -c "import ast; ast.parse(open('main.py').read()); print('AST ok')"
+
+      - name: Package smoke test
+        run: |
+          VERSION=$(jq -r .version extension/manifest.json)
+          (cd extension && zip -r "../url-inspector-v${VERSION}.zip" . -x "*.DS_Store")
+          unzip -l "url-inspector-v${VERSION}.zip" | head -n 30
+          echo "Package ok: url-inspector-v${VERSION}.zip"

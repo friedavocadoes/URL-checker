@@ -2,7 +2,13 @@
   "$schema": "https://opencode.ai/config.json",
   "instructions": ["AGENTS.md"],
   "watcher": {
-    "ignore": [".venv/**", "__pycache__/**", "*.pyc"]
+    "ignore": [
+      ".venv/**",
+      "__pycache__/**",
+      "*.pyc",
+      "*.zip",
+      "web-ext-artifacts/**"
+    ]
   },
   "formatter": false,
   "lsp": false,
@@ -15,6 +21,11 @@
       "python3 *": "allow",
       "pip *": "allow",
       "pytest*": "allow",
+      "jq *": "allow",
+      "node --check *": "allow",
+      "Compress-Archive *": "allow",
+      "zip *": "allow",
+      "unzip *": "allow",
       "*": "ask"
     },
     "edit": "allow",

@@ -1,3 +1,21 @@
-.git
-.venv
-__pycache__/*
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Extension builds
+url-inspector-*.zip
+web-ext-artifacts/
+*.xpi
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/

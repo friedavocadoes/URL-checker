@@ -1,0 +1,181 @@
+name: Release Extension
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Override version (e.g. 1.0.1) — leave empty to use manifest.json"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node (for jq/zip validation)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "Using workflow_dispatch version: $VERSION"
+          else
+            VERSION=$(jq -r .version extension/manifest.json)
+          fi
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "::error::Could not read version from extension/manifest.json"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION / tag: v$VERSION"
+
+      - name: Validate manifest
+        shell: bash
+        run: |
+          echo "Validating extension/manifest.json..."
+          jq empty extension/manifest.json
+          echo "manifest_version: $(jq -r .manifest_version extension/manifest.json)"
+          echo "name: $(jq -r .name extension/manifest.json)"
+          echo "version: $(jq -r .version extension/manifest.json)"
+          # Basic MV3 checks
+          if [ "$(jq -r .manifest_version extension/manifest.json)" != "3" ]; then
+            echo "::error::manifest_version must be 3"
+            exit 1
+          fi
+          for f in popup.html popup.js popup.css background.js; do
+            if [ ! -f "extension/$f" ]; then echo "::error::Missing extension/$f"; exit 1; fi
+          done
+          echo "All required files present."
+
+      - name: Check if tag already exists
+        id: tag_check
+        shell: bash
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $TAG already exists — will update release in place."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Tag $TAG does not exist — will create."
+          fi
+          # Also check remote
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+            echo "remote_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "remote_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package extension (zip)
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP="url-inspector-v${VERSION}.zip"
+          echo "Packaging $ZIP from extension/ ..."
+          # Ensure icons exist
+          ls -lh extension/icons/
+          # Zip contents of extension/ (not the folder itself) so unzip yields manifest at top level
+          (cd extension && zip -r "../$ZIP" . -x "*.DS_Store" -x "__MACOSX/*" -x "*.map")
+          ls -lh "$ZIP"
+          echo "--- zip contents ---"
+          unzip -l "$ZIP"
+          # Also produce unpacked artifact for debugging
+          echo "ZIP_SHA256=$(sha256sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - name: Create git tag (only on main push, not tag push)
+        if: steps.tag_check.outputs.exists == 'false' && github.ref_type != 'tag'
+        shell: bash
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG — URL Inspector & Multi-Checker v$VERSION"
+          git push origin "$TAG"
+          echo "Pushed tag $TAG"
+
+      - name: Determine release tag
+        id: release_tag
+        shell: bash
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ steps.version.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create / Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_tag.outputs.tag }}
+          name: "URL Inspector ${{ steps.release_tag.outputs.tag }}"
+          # If workflow was triggered by tag push, reuse tag; otherwise use manifest version.
+          # On re-run, allow updating existing release.
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          append_body: false
+          body: |
+            ## URL Inspector & Multi-Checker ${{ steps.release_tag.outputs.tag }}
+
+            Browser extension release — replicates `curl -siL` + `hreflang` auditing in one click.
+
+            ### Install (Chrome / Edge / Brave)
+
+            1. Download `url-inspector-${{ steps.release_tag.outputs.tag }}.zip` below (or `url-inspector-v*.zip`).
+            2. Unzip locally.
+            3. Open `chrome://extensions` (or `edge://extensions`) → enable **Developer mode** (top-right toggle).
+            4. Click **Load unpacked** → select the unzipped folder (must contain `manifest.json` at top level).
+            5. Pin the extension (puzzle icon → pin) and click it to inspect URLs.
+
+            > **Firefox:** `about:debugging` → *This Firefox* → *Load Temporary Add-on* → select `extension/manifest.json`. For permanent install, package as `.xpi` via `web-ext`.
+
+            ### What's inside
+
+            - `manifest.json` — MV3, `<all_urls>` host permissions, `declarativeNetRequest` for User-Agent spoofing
+            - `popup.html / popup.js / popup.css` — textarea (one URL per line) + User-Agent field + Run Inspection → tabbed results (mirrors `main.py:110` `Notebook`)
+            - `background.js` — service worker: manual redirect loop (max 10 hops), `10s` timeout via `AbortController`, final header dump, `DOMParser` hreflang extraction (mirrors `main.py:66-108`)
+            - `icons/icon{16,48,128}.png`
+
+            ### Python desktop still works
+
+            ```powershell
+            python -m venv .venv; .\.venv\Scripts\Activate.ps1
+            pip install -r requirements.txt
+            python main.py
+            ```
+
+            ### Zip checksum
+            `SHA256: ${{ env.ZIP_SHA256 }}`
+
+            ---
+            *Auto-generated by `.github/workflows/release.yml` on `${{ github.sha }}`*
+          files: |
+            url-inspector-v${{ steps.version.outputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact (CI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: url-inspector-${{ steps.version.outputs.tag }}
+          path: url-inspector-v${{ steps.version.outputs.version }}.zip
+          if-no-files-found: error
