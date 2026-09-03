@@ -48,6 +48,39 @@ async function clearUserAgentRule() {
   } catch (_) {}
 }
 
+// --- hreflang helpers (service-worker safe, no DOMParser) ---
+function getAttributeFromTag(tag, name) {
+  // Matches attr="value" | attr='value' | attr=value (unquoted) — case-insensitive name
+  // No DOMParser in service workers, so regex mirrors BeautifulSoup logic.
+  const re = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>]+))`, "i");
+  const m = tag.match(re);
+  if (!m) return null;
+  if (m[1] !== undefined) return m[1];
+  if (m[2] !== undefined) return m[2];
+  return m[3] ?? "";
+}
+
+function extractHreflangTags(html) {
+  const found = [];
+  if (!html || typeof html !== "string") return found;
+  // Find all <link ...> tags — handles multiline attrs, self-closing, etc.
+  const linkRe = /<link\b[^>]*>/gi;
+  let m;
+  while ((m = linkRe.exec(html)) !== null) {
+    const tag = m[0];
+    const rel = getAttributeFromTag(tag, "rel");
+    if (!rel || !rel.toLowerCase().includes("alternate")) continue;
+    const hreflang = getAttributeFromTag(tag, "hreflang");
+    // Mirror Python: has_attr("hreflang") — must exist (even if empty string, though we filter null)
+    if (hreflang === null) continue;
+    // get hreflang as-is (preserve case), href may be null
+    const href = getAttributeFromTag(tag, "href");
+    // Match popup/BS4 output even for empty href
+    found.push(`hreflang='${hreflang}' -> ${href}`);
+  }
+  return found;
+}
+
 /**
  * Inspect a single URL — mirrors main.py:66 process_single_url
  * @param {string} url
@@ -182,36 +215,12 @@ async function processSingleUrl(url, userAgent) {
     }
     out.push("\n");
 
-    // 3. hreflang Extraction
+    // 3. hreflang Extraction — service-worker safe (no DOMParser)
+    // Service workers have no DOM, so regex is used to mirror
+    // Python: soup.find_all("link", rel=lambda x: x and "alternate" in x.lower()) + has_attr("hreflang")
     out.push("=== HREFLANG TAGS FOUND ===");
     try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(finalBody, "text/html");
-      // Match Python: soup.find_all("link", rel=lambda x: x and "alternate" in x.lower())
-      // then has_attr("hreflang")
-      const candidates = doc.querySelectorAll('link[rel][hreflang]');
-      const found = [];
-      for (const el of candidates) {
-        const rel = (el.getAttribute("rel") || "").toLowerCase();
-        if (!rel.includes("alternate")) continue;
-        const hreflang = el.getAttribute("hreflang");
-        const href = el.getAttribute("href");
-        if (hreflang) found.push(`hreflang='${hreflang}' -> ${href}`);
-      }
-      // Also catch <link hreflang> where rel is space-separated list containing alternate (querySelector already handles, but be thorough)
-      if (found.length === 0) {
-        // Fallback broader scan like Python's lambda
-        const allLinks = doc.querySelectorAll("link[hreflang]");
-        for (const el of allLinks) {
-          const rel = (el.getAttribute("rel") || "").toLowerCase();
-          if (!rel.includes("alternate")) continue;
-          const hreflang = el.getAttribute("hreflang");
-          const href = el.getAttribute("href");
-          if (hreflang && !found.includes(`hreflang='${hreflang}' -> ${href}`)) {
-            found.push(`hreflang='${hreflang}' -> ${href}`);
-          }
-        }
-      }
+      const found = extractHreflangTags(finalBody);
       if (found.length > 0) {
         out.push(...found);
       } else {

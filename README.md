@@ -40,7 +40,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Default textarea contains `https://thehealthyhomeme.com/en/ae/packages-and-contracts`.
+Default textarea contains `https://google.com`.
 
 ---
 
@@ -75,7 +75,7 @@ Manual:
 - Bump `extension/manifest.json` `version` (e.g. `1.0.1`).
 - `git add extension/manifest.json && git commit -m "chore: bump extension to 1.0.1" && git push origin main`
 
-Or trigger manually: Actions → *Release Extension* → *Run workflow* (optional version override).
+Or trigger manually: Actions → _Release Extension_ → _Run workflow_ (optional version override).
 
 Tag-triggered: `git tag v1.0.1 && git push origin v1.0.1` also builds the same release.
 

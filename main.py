@@ -16,7 +16,7 @@ class URLInspectorApp:
 
         self.url_text = tk.Text(input_frame, height=4, width=80)
         self.url_text.pack(side="left", fill="x", expand=True, padx=5, pady=5)
-        self.url_text.insert("1.0", "https://thehealthyhomeme.com/en/ae/packages-and-contracts")
+        self.url_text.insert("1.0", "https://google.com")
 
         btn_frame = ttk.Frame(input_frame)
         btn_frame.pack(side="right", fill="y", padx=5, pady=5)

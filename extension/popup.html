@@ -1,62 +1,99 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>URL Inspector & Multi-Checker</title>
-  <link rel="stylesheet" href="popup.css" />
-</head>
-<body>
-  <header class="app-header">
-    <div class="app-title">
-      <span class="app-icon">🔍</span>
-      <h1>URL Inspector &amp; Multi-Checker</h1>
-      <span class="app-version" id="appVersion">v1.0.0</span>
-    </div>
-    <p class="app-subtitle">curl -siL + hreflang audit — in your browser</p>
-  </header>
-
-  <!-- Input -->
-  <section class="card">
-    <label class="card-label" for="urlInput">Target URLs (one per line)</label>
-    <textarea id="urlInput" rows="4" placeholder="https://example.com&#10;https://httpbin.org/redirect/2">https://thehealthyhomeme.com/en/ae/packages-and-contracts</textarea>
-
-    <div class="row opts-row">
-      <label for="uaInput" class="ua-label">User-Agent:</label>
-      <input id="uaInput" type="text" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64)" />
-    </div>
-    <p class="hint">Note: browsers block overriding User-Agent via fetch. The extension attempts it via declarativeNetRequest — if blocked, the browser default UA is used. Results still include hops / headers / hreflang.</p>
-
-    <div class="row btn-row">
-      <button id="runBtn" class="btn btn-primary">Run Inspection</button>
-      <button id="currentTabBtn" class="btn btn-secondary" title="Fill with current tab URL">Use Current Tab URL</button>
-      <button id="clearBtn" class="btn btn-ghost">Clear</button>
-    </div>
-    <div id="status" class="status" aria-live="polite"></div>
-  </section>
-
-  <!-- Results -->
-  <section class="card results-card">
-    <div class="tabs-bar">
-      <div id="tabButtons" class="tab-buttons"></div>
-      <div class="tab-actions">
-        <button id="copyBtn" class="btn btn-small" disabled>Copy</button>
-        <button id="exportBtn" class="btn btn-small" disabled>Export .txt</button>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>URL Inspector & Multi-Checker</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="app-title">
+        <span class="app-icon">🔍</span>
+        <h1>URL Inspector &amp; Multi-Checker</h1>
+        <span class="app-version" id="appVersion">v1.0.0</span>
       </div>
-    </div>
-    <div id="tabContents" class="tab-contents">
-      <div class="empty-state">
-        <p>No inspection yet.</p>
-        <p class="hint">Enter URLs above and click <strong>Run Inspection</strong>.<br/>Each URL gets its own tab with hops, headers, and hreflang.</p>
+      <p class="app-subtitle">curl -siL + hreflang audit — in your browser</p>
+    </header>
+
+    <!-- Input -->
+    <section class="card">
+      <label class="card-label" for="urlInput"
+        >Target URLs (one per line)</label
+      >
+      <textarea
+        id="urlInput"
+        rows="4"
+        placeholder="https://example.com&#10;https://httpbin.org/redirect/2"
+      >
+https://google.com</textarea
+      >
+
+      <div class="row opts-row">
+        <label for="uaInput" class="ua-label">User-Agent:</label>
+        <input
+          id="uaInput"
+          type="text"
+          value="Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        />
       </div>
-    </div>
-  </section>
+      <p class="hint">
+        Note: browsers block overriding User-Agent via fetch. The extension
+        attempts it via declarativeNetRequest — if blocked, the browser default
+        UA is used. Results still include hops / headers / hreflang.
+      </p>
 
-  <footer class="footer">
-    <span>Replicates <code>requests.Session.get(allow_redirects=True, timeout=10)</code> + <code>BeautifulSoup hreflang</code></span>
-    <a href="https://github.com/gautham-websters/URL-checker" target="_blank" rel="noopener">GitHub</a>
-  </footer>
+      <div class="row btn-row">
+        <button id="runBtn" class="btn btn-primary">Run Inspection</button>
+        <button
+          id="currentTabBtn"
+          class="btn btn-secondary"
+          title="Fill with current tab URL"
+        >
+          Use Current Tab URL
+        </button>
+        <button id="clearBtn" class="btn btn-ghost">Clear</button>
+      </div>
+      <div id="status" class="status" aria-live="polite"></div>
+    </section>
 
-  <script src="popup.js"></script>
-</body>
+    <!-- Results -->
+    <section class="card results-card">
+      <div class="tabs-bar">
+        <div id="tabButtons" class="tab-buttons"></div>
+        <div class="tab-actions">
+          <button id="copyBtn" class="btn btn-small" disabled>Copy</button>
+          <button id="exportBtn" class="btn btn-small" disabled>
+            Export .txt
+          </button>
+        </div>
+      </div>
+      <div id="tabContents" class="tab-contents">
+        <div class="empty-state">
+          <p>No inspection yet.</p>
+          <p class="hint">
+            Enter URLs above and click
+            <strong>Run Inspection</strong>.<br />Each URL gets its own tab with
+            hops, headers, and hreflang.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span
+        >Replicates
+        <code>requests.Session.get(allow_redirects=True, timeout=10)</code> +
+        <code>BeautifulSoup hreflang</code></span
+      >
+      <a
+        href="https://github.com/gautham-websters/URL-checker"
+        target="_blank"
+        rel="noopener"
+        >GitHub</a
+      >
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
 </html>

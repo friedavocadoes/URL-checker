@@ -4,6 +4,7 @@ Replicates `curl -siL` + `hreflang` auditing — now as a one-click browser exte
 Ported from the Python `tkinter` desktop app (`main.py`) to Manifest V3 (Chrome / Edge / Brave / Firefox).
 
 For each URL it reports:
+
 1. **HTTP redirect hops & status codes** — manual `fetch(redirect: 'manual')` loop, max 10 hops
 2. **Final response headers** — dumped verbatim
 3. **hreflang tags** — `DOMParser` extraction of `<link rel="alternate" hreflang="...">` (same loose logic as `BeautifulSoup` in `main.py:92`)
@@ -25,7 +26,7 @@ For each URL it reports:
 
 ### Firefox (temporary)
 
-1. Open `about:debugging` → *This Firefox* → **Load Temporary Add-on…**
+1. Open `about:debugging` → _This Firefox_ → **Load Temporary Add-on…**
 2. Select `extension/manifest.json`.
 
 For permanent Firefox install, package with `web-ext`:
@@ -40,7 +41,7 @@ npx web-ext build --source-dir=extension --artifacts-dir=web-ext-artifacts
 ## Usage
 
 1. Click the extension icon → popup opens (780×700).
-2. **Target URLs** — one per line. Default is `https://thehealthyhomeme.com/en/ae/packages-and-contracts` (same as desktop). Example to test redirects:
+2. **Target URLs** — one per line. Default is `https://google.com` (same as desktop). Example to test redirects:
    ```
    https://example.com
    https://httpbin.org/redirect/2
@@ -91,12 +92,12 @@ extension/
 
 ## Permissions Explained
 
-| Permission | Why |
-|---|---|
-| `storage` | Remember last URLs/UA, pending context-menu URL |
-| `activeTab`, `scripting` | *Use Current Tab URL* button |
-| `declarativeNetRequest`, `declarativeNetRequestWithHostAccess` | Spoof `User-Agent` header (browsers block `fetch` header override otherwise) |
-| `host_permissions: <all_urls>` | Fetch arbitrary user-supplied URLs + read their headers/body + follow redirects. Without this, CORS would block inspection. |
+| Permission                                                     | Why                                                                                                                         |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `storage`                                                      | Remember last URLs/UA, pending context-menu URL                                                                             |
+| `activeTab`, `scripting`                                       | _Use Current Tab URL_ button                                                                                                |
+| `declarativeNetRequest`, `declarativeNetRequestWithHostAccess` | Spoof `User-Agent` header (browsers block `fetch` header override otherwise)                                                |
+| `host_permissions: <all_urls>`                                 | Fetch arbitrary user-supplied URLs + read their headers/body + follow redirects. Without this, CORS would block inspection. |
 
 ---
 
@@ -131,9 +132,9 @@ python main.py   # 1000x700 tkinter window
 ## Troubleshooting
 
 - **No hops shown / opaqueredirect note:** Some browsers return `opaqueredirect` (status 0) for `redirect: manual` on cross-origin. The extension falls back to `redirect: follow` and notes the limitation while still showing final headers/hreflang. For full hop visibility, consider adding a tiny native host or CORS proxy — or use the desktop app which has full `requests` redirect history.
-- **User-Agent not applied:** Expected on some Chromium builds. The `declarativeNetRequest` rule is best-effort; check `chrome://extensions` → *Errors* for DNR failures. Headers/hops still work.
+- **User-Agent not applied:** Expected on some Chromium builds. The `declarativeNetRequest` rule is best-effort; check `chrome://extensions` → _Errors_ for DNR failures. Headers/hops still work.
 - **CORS error in console:** Ensure `<all_urls>` is granted. Reinstall unpacked if manifest changed.
-- **Service worker inactive:** Click *Service worker* link in `chrome://extensions` to inspect, or retry inspection — the popup auto-retries via `chrome.runtime.sendMessage`.
+- **Service worker inactive:** Click _Service worker_ link in `chrome://extensions` to inspect, or retry inspection — the popup auto-retries via `chrome.runtime.sendMessage`.
 
 ---
 

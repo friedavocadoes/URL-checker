@@ -73,7 +73,7 @@ Compress-Archive -Path extension\* -DestinationPath url-inspector-v1.0.0.zip -Fo
 unzip -l url-inspector-v1.0.0.zip   # verify manifest at top level
 ```
 
-Popup: 780px wide, `Target URLs` textarea (default `https://thehealthyhomeme.com/en/ae/packages-and-contracts`), `User-Agent` entry, `Run Inspection` + `Use Current Tab URL`, bottom tab bar + dark `<pre>` panel per URL. Output mirrors desktop exactly (=== sections).
+Popup: 780px wide, `Target URLs` textarea (default `https://google.com`), `User-Agent` entry, `Run Inspection` + `Use Current Tab URL`, bottom tab bar + dark `<pre>` panel per URL. Output mirrors desktop exactly (=== sections).
 
 ### Desktop (fallback)
 
