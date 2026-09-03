@@ -226,6 +226,47 @@ function exportAll() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// Pop out — fill browser window height
+// Chrome popups are capped at ~600px. This opens the same UI as a full tab
+// (or side panel when available) so CSS height:100vh truly fills the window.
+const popoutBtn = document.getElementById("popoutBtn");
+if (popoutBtn) {
+  // When already in a full tab / side panel, keep button but allow re-pop
+  const isFullPage = window.location.protocol === "chrome-extension:" && window.innerHeight > 620;
+  if (isFullPage) {
+    popoutBtn.title = "Already in full-page mode — click to open another tab";
+    popoutBtn.textContent = "⤢ Pop out again";
+  }
+  popoutBtn.addEventListener("click", async () => {
+    const url = chrome.runtime.getURL("popup.html");
+    try {
+      // Try sidePanel first if API exists (fills height docked)
+      if (chrome.sidePanel && typeof chrome.sidePanel.open === "function") {
+        try {
+          const win = await chrome.windows.getCurrent();
+          await chrome.sidePanel.open({ windowId: win.id });
+          // Ensure side panel points at our page (manifest default_path already does)
+          if (chrome.sidePanel.setOptions) {
+            await chrome.sidePanel.setOptions({ path: "popup.html", enabled: true });
+          }
+          return;
+        } catch (_) {
+          // fall through to tab
+        }
+      }
+    } catch (_) {}
+    // Fallback: open as full tab (height:100vh = browser window height)
+    try {
+      await chrome.tabs.create({ url });
+    } catch (e) {
+      // Final fallback: window.open
+      window.open(url, "_blank");
+    }
+    // Close the popup after launching
+    try { window.close(); } catch (_) {}
+  });
+}
+
 // Events
 els.runBtn.addEventListener("click", startInspection);
 els.currentTabBtn.addEventListener("click", fillCurrentTab);
@@ -247,3 +288,8 @@ els.urlInput.addEventListener("keydown", (e) => {
 els.uaInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") startInspection();
 });
+
+// Detect full-page / side-panel mode and add class for extra styling hooks
+if (window.innerHeight > 620 || window.innerWidth > 820 || window.location.search.includes("popout")) {
+  document.documentElement.classList.add("full-height");
+}

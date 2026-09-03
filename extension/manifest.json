@@ -33,5 +33,8 @@
   "background": {
     "service_worker": "background.js"
   },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
   "minimum_chrome_version": "108"
 }
