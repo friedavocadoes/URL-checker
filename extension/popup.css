@@ -1,9 +1,5 @@
 * { box-sizing: border-box; }
 
-html {
-  height: 100%;
-}
-
 html, body {
   margin: 0;
   padding: 0;
@@ -11,28 +7,32 @@ html, body {
   font-size: 13px;
   color: #1e293b;
   background: #f8fafc;
-  height: 100%;
 }
 
 body {
   width: 780px;
+  min-height: 560px;
+  max-height: 700px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Full-tab / popped-out mode: fill browser window height.
+   Applied only when JS adds `full-height` to <html> (tab / side-panel / large viewport).
+   Popup keeps original 560-700px so Chrome can auto-size and show output correctly. */
+html.full-height {
+  height: 100%;
+}
+html.full-height body {
+  width: 100%;
+  max-width: 960px;
   height: 100vh;
   min-height: 100vh;
   max-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  margin: 0 auto;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
   overflow: hidden;
-}
-
-/* Full-tab / expanded mode: center and allow wider layout when opened as tab or side panel */
-@media (min-width: 800px) {
-  body {
-    width: 100%;
-    max-width: 960px;
-    margin: 0 auto;
-    border-left: 1px solid #e2e8f0;
-    border-right: 1px solid #e2e8f0;
-  }
 }
 
 /* Header */
