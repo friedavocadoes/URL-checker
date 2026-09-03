@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "watcher": {
+    "ignore": [".venv/**", "__pycache__/**", "*.pyc"]
+  },
+  "formatter": false,
+  "lsp": false,
+  "permission": {
+    "bash": {
+      "git *": "allow",
+      "python -m py_compile *": "allow",
+      "python -c *": "allow",
+      "python main.py": "ask",
+      "python3 *": "allow",
+      "pip *": "allow",
+      "pytest*": "allow",
+      "*": "ask"
+    },
+    "edit": "allow",
+    "external_directory": "allow"
+  }
+}
