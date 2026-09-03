@@ -24,6 +24,19 @@
       <label class="card-label" for="urlInput"
         >Target URLs (one per line)</label
       >
+      <!-- Clipboard link prompt — shown when a URL is detected in clipboard -->
+      <div id="clipboardPrompt" class="clipboard-prompt hidden" role="status" aria-live="polite">
+        <div class="clipboard-prompt-text">
+          <span class="clipboard-prompt-icon">📋</span>
+          <span>Link in clipboard:</span>
+          <code id="clipboardUrl" class="clipboard-url"></code>
+        </div>
+        <div class="clipboard-actions">
+          <button id="clipboardAppendBtn" class="btn btn-small btn-primary">Append to bottom</button>
+          <button id="clipboardReplaceBtn" class="btn btn-small">Clear &amp; paste</button>
+          <button id="clipboardDismissBtn" class="btn btn-ghost btn-small" title="Dismiss">✕</button>
+        </div>
+      </div>
       <textarea
         id="urlInput"
         rows="4"
@@ -96,6 +109,11 @@ https://google.com</textarea
         >GitHub</a
       >
     </footer>
+
+    <!-- Edge drag resizers for popup (hidden in full-tab/sidePanel where window handles resizing) -->
+    <div class="resizer resizer-right" id="resizerRight" title="Drag to resize width"></div>
+    <div class="resizer resizer-bottom" id="resizerBottom" title="Drag to resize height"></div>
+    <div class="resizer resizer-corner" id="resizerCorner" title="Drag to resize — double-click to reset to 780×600"></div>
 
     <script src="popup.js"></script>
   </body>

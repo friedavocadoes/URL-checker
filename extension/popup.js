@@ -13,6 +13,11 @@ const els = {
   copyBtn: document.getElementById("copyBtn"),
   exportBtn: document.getElementById("exportBtn"),
   appVersion: document.getElementById("appVersion"),
+  clipboardPrompt: document.getElementById("clipboardPrompt"),
+  clipboardUrl: document.getElementById("clipboardUrl"),
+  clipboardAppendBtn: document.getElementById("clipboardAppendBtn"),
+  clipboardReplaceBtn: document.getElementById("clipboardReplaceBtn"),
+  clipboardDismissBtn: document.getElementById("clipboardDismissBtn"),
 };
 
 let tabsData = []; // { url, content, hasError }
@@ -45,6 +50,86 @@ chrome.storage.local.get(["lastUrls", "lastUA"], (data) => {
     }
   });
 });
+
+// --- Clipboard link detection prompt ---
+let lastClipboardPromptUrl = null;
+const dismissedClipboardUrls = new Set();
+function isValidHttpUrl(text) {
+  if (!text || typeof text !== "string") return false;
+  const t = text.trim();
+  // Basic URL check — allow http/https only, no spaces, must be single line
+  if (!t || t.includes(" ") || t.includes("\n")) return false;
+  try {
+    const u = new URL(t);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch (_) {
+    return false;
+  }
+}
+function showClipboardPrompt(url) {
+  if (!els.clipboardPrompt || !els.clipboardUrl) return;
+  // Don't show if already in textarea
+  const current = els.urlInput.value.split("\n").map((s) => s.trim()).filter(Boolean);
+  if (current.includes(url)) return;
+  // Don't re-show if user dismissed this exact URL in this session
+  if (dismissedClipboardUrls.has(url)) return;
+  // Don't duplicate if already visible for same URL
+  if (lastClipboardPromptUrl === url && !els.clipboardPrompt.classList.contains("hidden")) return;
+  lastClipboardPromptUrl = url;
+  els.clipboardUrl.textContent = url;
+  els.clipboardUrl.title = url;
+  els.clipboardPrompt.classList.remove("hidden");
+}
+function hideClipboardPrompt() {
+  if (!els.clipboardPrompt) return;
+  // Remember dismissed URL to avoid nagging for same clipboard content
+  const url = els.clipboardUrl?.textContent?.trim();
+  if (url) dismissedClipboardUrls.add(url);
+  els.clipboardPrompt.classList.add("hidden");
+}
+async function checkClipboardForUrl() {
+  // Try to read clipboard — requires clipboardRead permission; fails silently if not granted or no gesture
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) return;
+    const text = await navigator.clipboard.readText();
+    if (isValidHttpUrl(text)) {
+      const url = text.trim();
+      // Don't prompt if already dismissed this session for same url and user didn't change clipboard
+      showClipboardPrompt(url);
+    }
+  } catch (e) {
+    // Clipboard read blocked (needs user gesture on some browsers) — ignore, no prompt
+    // console.debug("clipboard read failed", e);
+  }
+}
+// Check on load (delayed to allow popup to render) and on focus (user may have copied after opening)
+setTimeout(checkClipboardForUrl, 250);
+window.addEventListener("focus", () => setTimeout(checkClipboardForUrl, 100));
+// Also handle append/replace/dismiss actions
+if (els.clipboardAppendBtn) {
+  els.clipboardAppendBtn.addEventListener("click", () => {
+    const url = els.clipboardUrl?.textContent?.trim();
+    if (!url) return;
+    const current = els.urlInput.value.trim();
+    els.urlInput.value = current ? current + "\n" + url : url;
+    hideClipboardPrompt();
+    setStatus(`Appended clipboard link: ${url}`, "success");
+    try { chrome.storage.local.set({ lastUrls: els.urlInput.value }); } catch (_) {}
+  });
+}
+if (els.clipboardReplaceBtn) {
+  els.clipboardReplaceBtn.addEventListener("click", () => {
+    const url = els.clipboardUrl?.textContent?.trim();
+    if (!url) return;
+    els.urlInput.value = url;
+    hideClipboardPrompt();
+    setStatus(`Pasted clipboard link (cleared): ${url}`, "success");
+    try { chrome.storage.local.set({ lastUrls: els.urlInput.value }); } catch (_) {}
+  });
+}
+if (els.clipboardDismissBtn) {
+  els.clipboardDismissBtn.addEventListener("click", hideClipboardPrompt);
+}
 
 function setStatus(msg, kind = "") {
   els.status.textContent = msg;
@@ -293,3 +378,123 @@ els.uaInput.addEventListener("keydown", (e) => {
 if (window.innerHeight > 620 || window.innerWidth > 820 || window.location.search.includes("popout")) {
   document.documentElement.classList.add("full-height");
 }
+
+// --- Resizable popup via mouse edge dragging ---
+// Supports: right edge (width), bottom edge (height), corner (both), and native CSS `resize` handle.
+// Persists size to chrome.storage.local and restores on next open.
+// Hidden in full-height mode where the browser window handles resizing.
+(function setupResizablePopup() {
+  // Skip in full-height / tab / side-panel — window resizes natively there
+  if (document.documentElement.classList.contains("full-height")) return;
+
+  const body = document.body;
+  const resizerRight = document.getElementById("resizerRight");
+  const resizerBottom = document.getElementById("resizerBottom");
+  const resizerCorner = document.getElementById("resizerCorner");
+  const STORAGE_KEY = "popupSize";
+  const DEFAULT_WIDTH = 780;
+  const DEFAULT_HEIGHT = 600;
+  const MIN_WIDTH = 380;
+  const MIN_HEIGHT = 480;
+  const MAX_WIDTH = 800; // Chrome popup max width
+  const MAX_HEIGHT = 600; // Chrome popup max height — outer window caps here; inner can't outgrow outer
+
+  // Restore saved size
+  try {
+    chrome.storage.local.get([STORAGE_KEY], (data) => {
+      const s = data[STORAGE_KEY];
+      if (s && typeof s.width === "number" && typeof s.height === "number") {
+        const w = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, s.width));
+        const h = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, s.height));
+        body.style.width = w + "px";
+        body.style.height = h + "px";
+        // Override max-height to allow larger than default 85vh/700px when user explicitly resized
+        body.style.maxHeight = h + "px";
+      }
+    });
+  } catch (_) {}
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function persistSize() {
+    const w = Math.round(parseFloat(getComputedStyle(body).width) || body.offsetWidth);
+    const h = Math.round(parseFloat(getComputedStyle(body).height) || body.offsetHeight);
+    try { chrome.storage.local.set({ [STORAGE_KEY]: { width: w, height: h } }); } catch (_) {}
+  }
+
+  function resetSize() {
+    body.style.width = DEFAULT_WIDTH + "px";
+    body.style.height = DEFAULT_HEIGHT + "px";
+    body.style.maxHeight = DEFAULT_HEIGHT + "px";
+    try { chrome.storage.local.remove(STORAGE_KEY); } catch (_) {}
+  }
+
+  // Native CSS `resize` observer — catch corner drag via ResizeObserver and persist
+  try {
+    if (typeof ResizeObserver !== "undefined") {
+      let resizeTimer = null;
+      const ro = new ResizeObserver(() => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(persistSize, 300);
+      });
+      ro.observe(body);
+    }
+  } catch (_) {}
+
+  // Helper to attach edge drag
+  function attachResizer(el, mode) {
+    if (!el) return;
+    let startX = 0, startY = 0, startW = 0, startH = 0, dragging = false;
+
+    el.addEventListener("mousedown", (e) => {
+      // Ignore if in full-height
+      if (document.documentElement.classList.contains("full-height")) return;
+      e.preventDefault();
+      dragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startW = body.offsetWidth;
+      startH = body.offsetHeight;
+      document.body.style.userSelect = "none";
+      document.body.style.pointerEvents = "none";
+      // Keep resizers interactive
+      el.style.pointerEvents = "auto";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+
+    el.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      resetSize();
+    });
+
+    function onMove(e) {
+      if (!dragging) return;
+      let newW = startW, newH = startH;
+      if (mode === "right" || mode === "corner") {
+        newW = clamp(startW + (e.clientX - startX), MIN_WIDTH, MAX_WIDTH);
+        body.style.width = newW + "px";
+      }
+      if (mode === "bottom" || mode === "corner") {
+        newH = clamp(startH + (e.clientY - startY), MIN_HEIGHT, MAX_HEIGHT);
+        body.style.height = newH + "px";
+        body.style.maxHeight = newH + "px";
+      }
+    }
+
+    function onUp() {
+      if (!dragging) return;
+      dragging = false;
+      document.body.style.userSelect = "";
+      document.body.style.pointerEvents = "";
+      el.style.pointerEvents = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      persistSize();
+    }
+  }
+
+  attachResizer(resizerRight, "right");
+  attachResizer(resizerBottom, "bottom");
+  attachResizer(resizerCorner, "corner");
+})();

@@ -25,7 +25,9 @@
     "scripting",
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",
-    "contextMenus"
+    "contextMenus",
+    "clipboardRead",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "<all_urls>"
