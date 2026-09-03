@@ -8,7 +8,7 @@ class URLInspectorApp:
     def __init__(self, root):
         self.root = root
         self.root.title("URL Inspector & Multi-Checker")
-        self.root.geometry("1000"x"700")
+        self.root.geometry("1000x700")
 
         # Top Frame: Input & Options
         input_frame = ttk.LabelFrame(self.root, text=" Target URLs (One per line) ")
@@ -109,7 +109,6 @@ class URLInspectorApp:
 
     def create_result_tab(self, url, content):
         frame = ttk.Frame(self.notebook)
-        # Short tab label
         tab_label = url.replace("https://", "").replace("http://", "")[:25] + "..."
         self.notebook.add(frame, text=tab_label)
 
@@ -117,7 +116,6 @@ class URLInspectorApp:
         text_area.insert("1.0", content)
         text_area.pack(fill="both", expand=True)
 
-        # Add vertical scrollbar
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=text_area.yview)
         scrollbar.pack(side="right", fill="y")
         text_area.config(yscrollcommand=scrollbar.set)
