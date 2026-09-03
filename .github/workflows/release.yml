@@ -148,21 +148,6 @@ jobs:
 
             > **Firefox:** `about:debugging` → *This Firefox* → *Load Temporary Add-on* → select `extension/manifest.json`. For permanent install, package as `.xpi` via `web-ext`.
 
-            ### What's inside
-
-            - `manifest.json` — MV3, `<all_urls>` host permissions, `declarativeNetRequest` for User-Agent spoofing
-            - `popup.html / popup.js / popup.css` — textarea (one URL per line) + User-Agent field + Run Inspection → tabbed results (mirrors `main.py:110` `Notebook`)
-            - `background.js` — service worker: manual redirect loop (max 10 hops), `10s` timeout via `AbortController`, final header dump, `DOMParser` hreflang extraction (mirrors `main.py:66-108`)
-            - `icons/icon{16,48,128}.png`
-
-            ### Python desktop still works
-
-            ```powershell
-            python -m venv .venv; .\.venv\Scripts\Activate.ps1
-            pip install -r requirements.txt
-            python main.py
-            ```
-
             ### Zip checksum
             `SHA256: ${{ env.ZIP_SHA256 }}`
 
