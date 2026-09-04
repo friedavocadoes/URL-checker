@@ -3,15 +3,17 @@
 > `curl -siL` + `hreflang` audit for any URL — as a browser extension or desktop app.
 
 <p align="center">
-  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest"><img src="https://img.shields.io/github/v/release/gautham-websters/URL-checker?label=latest&color=4285F4&style=for-the-badge" alt="latest release"></a>
-  <a href="https://github.com/friedavocadoes/URL-checker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/gautham-websters/URL-checker?style=for-the-badge&color=00A562" alt="MIT"></a>
+  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest"><img src="https://img.shields.io/github/v/release/friedavocadoes/URL-checker?label=latest&color=4285F4&style=for-the-badge" alt="latest release"></a>
+  <a href="https://github.com/friedavocadoes/URL-checker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/friedavocadoes/URL-checker?style=for-the-badge&color=00A562" alt="MIT"></a>
   <img src="https://img.shields.io/badge/manifest-v3-FF7139?style=for-the-badge&logo=googlechrome&logoColor=white" alt="MV3">
 </p>
 
+<!-- Direct download — always latest, no need to pick from Assets -->
 <p align="center">
-  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest"><img src="https://img.shields.io/badge/Download-Extension_ZIP-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Download Extension"></a>
-  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest"><img src="https://img.shields.io/badge/Download-Desktop_EXE-00A562?style=for-the-badge&logo=windows&logoColor=white" alt="Download EXE"></a>
+  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest/download/url-inspector.zip" style="display:inline-block;background:#1a73e8;color:#ffffff !important;padding:14px 28px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none;margin:8px 6px;box-shadow:0 6px 18px rgba(26,115,232,0.35);border:2px solid #1557b0;letter-spacing:0.2px;">⬇️ Download Extension ZIP</a>
+  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest/download/URL-Inspector.exe" style="display:inline-block;background:#0f9d58;color:#ffffff !important;padding:14px 28px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none;margin:8px 6px;box-shadow:0 6px 18px rgba(15,157,88,0.35);border:2px solid #0b7a43;letter-spacing:0.2px;">⬇️ Download Desktop EXE</a>
 </p>
+<p align="center" style="margin-top:-6px;color:#64748b;font-size:12px;">One click → direct download of latest build (no need to browse Assets)</p>
 
 **For each URL:** redirect hops & status codes · final headers · `<link rel="alternate" hreflang>` tags.
 
@@ -19,11 +21,9 @@
 
 ### Download
 
-Grab the latest from **[Releases](../../releases/latest)**:
+**Direct (one click):** use the big buttons above — always the latest `url-inspector.zip` / `URL-Inspector.exe`.
 
-- **`url-inspector-v*.zip`** → extension · **`*URL-Inspector-v*.exe`** → Windows app (no Python needed)
-
-> Buttons above go to the latest release — pick your file under **Assets**.
+Or browse **[Releases](../../releases/latest) → Assets** for versioned files (`url-inspector-v*.zip`, `URL-Inspector-v*.exe`).
 
 ### Use
 

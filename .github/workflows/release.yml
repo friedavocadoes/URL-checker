@@ -179,6 +179,9 @@ jobs:
           (cd extension && zip -r "../$ZIP" . -x "*.DS_Store" -x "__MACOSX/*" -x "*.map")
           ls -lh "$ZIP"
           unzip -l "$ZIP" | head -n 40
+          # Create fixed-name copy for direct download button (latest/download/url-inspector.zip)
+          cp "$ZIP" url-inspector.zip
+          ls -lh url-inspector.zip
           echo "ZIP_SHA256=$(sha256sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
           echo "ZIP_NAME=$ZIP" >> "$GITHUB_ENV"
 
@@ -186,7 +189,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: extension-zip
-          path: url-inspector-v${{ needs.resolve-version.outputs.version }}.zip
+          path: |
+            url-inspector-v${{ needs.resolve-version.outputs.version }}.zip
+            url-inspector.zip
           if-no-files-found: error
 
   # ── Build desktop .exe (Windows PyInstaller) ───────────────────────────────
@@ -265,11 +270,11 @@ jobs:
           TAG="${{ needs.resolve-version.outputs.tag }}"
           echo "Version: $VERSION Tag: $TAG Reason: ${{ needs.resolve-version.outputs.reason }}"
           ls -R artifacts
-          # Flatten artifacts (download-artifact v4 creates subdirs per artifact)
+          # Flatten artifacts (download-artifact v4 creates subdirs per artifact) — handle both flat and nested dist/
           mkdir -p release-files
-          cp artifacts/extension-zip/*.zip release-files/ 2>/dev/null || cp artifacts/extension-zip/url-inspector-*.zip release-files/ || true
-          cp artifacts/desktop-exe/*.exe release-files/ 2>/dev/null || true
-          cp artifacts/desktop-exe/SHA256.txt release-files/ 2>/dev/null || true
+          find artifacts/extension-zip -name "*.zip" -exec cp {} release-files/ \; 2>/dev/null || true
+          find artifacts/desktop-exe -name "*.exe" -exec cp {} release-files/ \; 2>/dev/null || true
+          find artifacts/desktop-exe -name "SHA256.txt" -exec cp {} release-files/ \; 2>/dev/null || true
           ls -lh release-files/
           # Compute hashes for body
           ZIP="release-files/url-inspector-v${VERSION}.zip"
@@ -278,6 +283,10 @@ jobs:
           if [ -f "$EXE" ]; then echo "EXE_SHA256=$(sha256sum "$EXE" | cut -d' ' -f1)" >> "$GITHUB_ENV"; fi
           echo "ZIP_NAME=$(basename "$ZIP" 2>/dev/null || echo url-inspector-v${VERSION}.zip)" >> "$GITHUB_ENV"
           echo "EXE_NAME=$(basename "$EXE" 2>/dev/null || echo URL-Inspector-v${VERSION}.exe)" >> "$GITHUB_ENV"
+          # Ensure fixed-name copies exist for direct download buttons
+          if [ -f "release-files/url-inspector-v${VERSION}.zip" ] && [ ! -f "release-files/url-inspector.zip" ]; then cp "release-files/url-inspector-v${VERSION}.zip" "release-files/url-inspector.zip"; fi
+          if [ -f "release-files/URL-Inspector-v${VERSION}.exe" ] && [ ! -f "release-files/URL-Inspector.exe" ]; then cp "release-files/URL-Inspector-v${VERSION}.exe" "release-files/URL-Inspector.exe"; fi
+          ls -lh release-files/
 
       - name: Create git tag if missing (for commit/dispatch triggers)
         if: github.ref_type != 'tag'
@@ -340,7 +349,9 @@ jobs:
             *Built by `.github/workflows/release.yml` @ `${{ github.sha }}`*
           files: |
             release-files/url-inspector-v${{ needs.resolve-version.outputs.version }}.zip
+            release-files/url-inspector.zip
             release-files/URL-Inspector-v${{ needs.resolve-version.outputs.version }}.exe
+            release-files/URL-Inspector.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
