@@ -3,14 +3,14 @@
 > `curl -siL` + `hreflang` audit for any URL — as a browser extension or desktop app.
 
 <p align="center">
-  <a href="https://github.com/gautham-websters/URL-checker/releases/latest"><img src="https://img.shields.io/github/v/release/gautham-websters/URL-checker?label=latest&color=4285F4&style=for-the-badge" alt="latest release"></a>
-  <a href="https://github.com/gautham-websters/URL-checker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/gautham-websters/URL-checker?style=for-the-badge&color=00A562" alt="MIT"></a>
+  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest"><img src="https://img.shields.io/github/v/release/gautham-websters/URL-checker?label=latest&color=4285F4&style=for-the-badge" alt="latest release"></a>
+  <a href="https://github.com/friedavocadoes/URL-checker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/gautham-websters/URL-checker?style=for-the-badge&color=00A562" alt="MIT"></a>
   <img src="https://img.shields.io/badge/manifest-v3-FF7139?style=for-the-badge&logo=googlechrome&logoColor=white" alt="MV3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/gautham-websters/URL-checker/releases/latest"><img src="https://img.shields.io/badge/Download-Extension_ZIP-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Download Extension"></a>
-  <a href="https://github.com/gautham-websters/URL-checker/releases/latest"><img src="https://img.shields.io/badge/Download-Desktop_EXE-00A562?style=for-the-badge&logo=windows&logoColor=white" alt="Download EXE"></a>
+  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest"><img src="https://img.shields.io/badge/Download-Extension_ZIP-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Download Extension"></a>
+  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest"><img src="https://img.shields.io/badge/Download-Desktop_EXE-00A562?style=for-the-badge&logo=windows&logoColor=white" alt="Download EXE"></a>
 </p>
 
 **For each URL:** redirect hops & status codes · final headers · `<link rel="alternate" hreflang>` tags.
@@ -28,12 +28,14 @@ Grab the latest from **[Releases](../../releases/latest)**:
 ### Use
 
 **Extension (recommended)**
+
 1. Unzip → `chrome://extensions` → Developer mode → **Load unpacked** → pick unzipped folder
 2. Pin it → paste URLs (one per line) → **Run Inspection**
 
-*Firefox:* `about:debugging` → Load Temporary Add-on → `extension/manifest.json`
+_Firefox:_ `about:debugging` → Load Temporary Add-on → `extension/manifest.json`
 
 **Desktop**
+
 ```powershell
 # .exe: double-click URL-Inspector-v*.exe
 # or Python:
@@ -47,7 +49,7 @@ Paste `https://example.com` and `https://httpbin.org/redirect/2` to try redirect
 ### For Developers
 
 ```powershell
-git clone https://github.com/gautham-websters/URL-checker && cd URL-checker
+git clone https://github.com/friedavocadoes/URL-checker && cd URL-checker
 pip install -r requirements.txt; python main.py          # desktop
 # extension: chrome://extensions → Load unpacked → extension/
 ```

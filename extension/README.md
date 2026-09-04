@@ -17,7 +17,7 @@ For each URL it reports:
 
 1. Download or clone this repo:
    ```powershell
-   git clone https://github.com/gautham-websters/URL-checker.git
+   git clone https://github.com/friedavocadoes/URL-checker.git
    cd URL-checker
    ```
 2. Open `chrome://extensions` (or `edge://extensions`) → toggle **Developer mode** (top-right).

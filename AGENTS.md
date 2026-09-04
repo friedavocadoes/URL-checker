@@ -12,6 +12,7 @@ Dual delivery (same core logic):
 - **Desktop GUI fallback** (`main.py` — single-file `tkinter`, 126 lines) — `python main.py`.
 
 For each URL it reports:
+
 1. **HTTP redirect hops & status codes** — `requests.Session.get(allow_redirects=True)` in Python; manual `fetch(redirect:'manual')` loop in extension.
 2. **Final response headers** — dumped verbatim.
 3. **hreflang tags** — `BeautifulSoup` parse (`main.py:92`) / `DOMParser` in extension (`background.js`).
@@ -20,17 +21,17 @@ Current state: `main` branch, Python 3.13 + Extension v1.0.0 MV3, `.github/workf
 
 ## 2. Stack & Runtime
 
-| Layer | Detail |
-|-------|--------|
-| **Extension** | Manifest V3 (`extension/manifest.json:1`), `popup.html/js/css` + `background.js` service worker, vanilla JS (no build, no bundler) |
-| **Desktop** | Python 3.13 (tested 3.13.13), `tkinter` + `ttk` (stdlib, needs display; headless CI fails on `Tk()`) |
-| Networking (desktop) | `requests==2.34.2` (`urllib3==2.7.0`, `certifi`, `charset-normalizer`, `idna`) |
-| Networking (extension) | `fetch` with `host_permissions: <all_urls>`, `declarativeNetRequest` for User-Agent spoof, `AbortController` timeout 10s |
-| HTML parsing | Desktop: `beautifulsoup4==4.15.0` + `soupsieve==2.9.2`; Extension: `DOMParser` |
-| Concurrency | Desktop: `threading.Thread(daemon=True)` + `root.after(0, ...)`; Extension: `async/await` + `chrome.runtime.sendMessage` |
-| Env | local `.venv/` (ignored), `requirements.txt` pinned (desktop only) |
-| OS | Developed on `win32` / PowerShell 5.1; paths assume Windows but code is cross-platform; extension is cross-browser (Chrome/Edge/Brave/Firefox MV3) |
-| CI/CD | `.github/workflows/ci.yml` (validate manifest + JS syntax + py_compile), `.github/workflows/release.yml` (auto-release on `extension/**` push) |
+| Layer                  | Detail                                                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Extension**          | Manifest V3 (`extension/manifest.json:1`), `popup.html/js/css` + `background.js` service worker, vanilla JS (no build, no bundler)                 |
+| **Desktop**            | Python 3.13 (tested 3.13.13), `tkinter` + `ttk` (stdlib, needs display; headless CI fails on `Tk()`)                                               |
+| Networking (desktop)   | `requests==2.34.2` (`urllib3==2.7.0`, `certifi`, `charset-normalizer`, `idna`)                                                                     |
+| Networking (extension) | `fetch` with `host_permissions: <all_urls>`, `declarativeNetRequest` for User-Agent spoof, `AbortController` timeout 10s                           |
+| HTML parsing           | Desktop: `beautifulsoup4==4.15.0` + `soupsieve==2.9.2`; Extension: `DOMParser`                                                                     |
+| Concurrency            | Desktop: `threading.Thread(daemon=True)` + `root.after(0, ...)`; Extension: `async/await` + `chrome.runtime.sendMessage`                           |
+| Env                    | local `.venv/` (ignored), `requirements.txt` pinned (desktop only)                                                                                 |
+| OS                     | Developed on `win32` / PowerShell 5.1; paths assume Windows but code is cross-platform; extension is cross-browser (Chrome/Edge/Brave/Firefox MV3) |
+| CI/CD                  | `.github/workflows/ci.yml` (validate manifest + JS syntax + py_compile), `.github/workflows/release.yml` (auto-release on `extension/**` push)     |
 
 ## 3. Repository Layout
 
@@ -53,7 +54,7 @@ URL/                             # worktree root
 ├── .gitignore                   # Proper ignores: .venv/, __pycache__/, *.zip, .DS_Store (no longer ignores .git)
 ├── opencode.json                # opencode project config (this repo)
 ├── AGENTS.md                    # this file
-└── .git/                        # origin https://github.com/gautham-websters/URL-checker, branch main
+└── .git/                        # origin https://github.com/friedavocadoes/URL-checker, branch main
 ```
 
 No `pyproject.toml`/`setup.py`, no extension build step (vanilla MV3), no bundler.
@@ -91,28 +92,29 @@ python -c "import ast; ast.parse(open('main.py').read()); print('parse ok')"
 
 ### Desktop — `main.py` (126 lines) — `class URLInspectorApp` — `main.py:7`
 
-| Method | Location | Responsibility |
-|--------|----------|----------------|
-| `__init__(self, root)` | `main.py:8` | Build UI: `input_frame` (Text + Run button), `opts_frame` (User-Agent), `notebook` |
-| `start_inspection(self)` | `main.py:39` | Parse URLs from `url_text`, validate non-empty, clear `notebook` tabs, disable button, spawn daemon thread |
-| `inspect_urls(self, urls)` | `main.py:54` | Worker thread: normalize `http(s)://`, call `process_single_url`, schedule `create_result_tab` via `root.after(0, ...)` |
-| `process_single_url(self, url, headers)` | `main.py:66` | Core — `requests.Session().get(url, headers, allow_redirects=True, timeout=10)` → hops (`res.history`), headers, hreflang (`soup.find_all("link", rel=lambda x: x and "alternate" in x.lower())`); returns `"\n".join(out)`; catches all |
-| `create_result_tab(self, url, content)` | `main.py:110` | Main-thread UI: `ttk.Frame`, truncated label (`url[:25]+"..."`), `tk.Text(wrap="none")` + `ttk.Scrollbar` |
+| Method                                   | Location      | Responsibility                                                                                                                                                                                                                           |
+| ---------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `__init__(self, root)`                   | `main.py:8`   | Build UI: `input_frame` (Text + Run button), `opts_frame` (User-Agent), `notebook`                                                                                                                                                       |
+| `start_inspection(self)`                 | `main.py:39`  | Parse URLs from `url_text`, validate non-empty, clear `notebook` tabs, disable button, spawn daemon thread                                                                                                                               |
+| `inspect_urls(self, urls)`               | `main.py:54`  | Worker thread: normalize `http(s)://`, call `process_single_url`, schedule `create_result_tab` via `root.after(0, ...)`                                                                                                                  |
+| `process_single_url(self, url, headers)` | `main.py:66`  | Core — `requests.Session().get(url, headers, allow_redirects=True, timeout=10)` → hops (`res.history`), headers, hreflang (`soup.find_all("link", rel=lambda x: x and "alternate" in x.lower())`); returns `"\n".join(out)`; catches all |
+| `create_result_tab(self, url, content)`  | `main.py:110` | Main-thread UI: `ttk.Frame`, truncated label (`url[:25]+"..."`), `tk.Text(wrap="none")` + `ttk.Scrollbar`                                                                                                                                |
 
 Data flow: `url_text` → `start_inspection` → `threading.Thread` → `inspect_urls` loop → `process_single_url` (blocking `requests`) → `root.after` → `create_result_tab`.
 
 ### Extension — MV3
 
-| File | Location | Responsibility |
-|------|----------|----------------|
-| `manifest.json` | `extension/manifest.json:1` | MV3, `action.default_popup: popup.html`, `permissions: [storage, activeTab, scripting, declarativeNetRequest, declarativeNetRequestWithHostAccess]`, `host_permissions: ["<all_urls>"]`, `background.service_worker: background.js` |
-| `popup.html` | `extension/popup.html:1` | Structure — header + input card (textarea, UA, Run/CurrentTab/Clear, #status) + results card (tabButtons + tabContents) |
-| `popup.css` | `extension/popup.css:1` | Cards, tab pills, dark code panel; no framework |
-| `popup.js` | `extension/popup.js:1` | UI controller — mirrors `start_inspection`/`create_result_tab`: parses URLs, `chrome.storage.local` persist, `chrome.runtime.sendMessage({type:"INSPECT_URL", url, userAgent})` per URL sequentially, builds `tabsData[]`, `switchTab`, copy/export (clipboard + Blob download) |
-| `background.js` | `extension/background.js:1` | Service worker — mirrors `process_single_url`: `processSingleUrl(url, userAgent)` with `MAX_REDIRECTS=10`, `FETCH_TIMEOUT_MS=10000`, `setUserAgentRule`/`clearUserAgentRule` via `chrome.declarativeNetRequest.updateDynamicRules` (id 1, `modifyHeaders` for `User-Agent`), manual `fetch(redirect:'manual')` loop resolving `Location` via `new URL(location, currentUrl)`, fallback for `opaqueredirect`/status 0 via `fetch(redirect:'follow')`, header dump via `headers.entries()`, hreflang via `DOMParser` + `querySelectorAll('link[rel][hreflang]')` filtered by `rel.toLowerCase().includes('alternate')` |
-| `icons/icon*.png` | `extension/icons/` | 16/48/128, Pillow-generated |
+| File              | Location                    | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.json`   | `extension/manifest.json:1` | MV3, `action.default_popup: popup.html`, `permissions: [storage, activeTab, scripting, declarativeNetRequest, declarativeNetRequestWithHostAccess]`, `host_permissions: ["<all_urls>"]`, `background.service_worker: background.js`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `popup.html`      | `extension/popup.html:1`    | Structure — header + input card (textarea, UA, Run/CurrentTab/Clear, #status) + results card (tabButtons + tabContents)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `popup.css`       | `extension/popup.css:1`     | Cards, tab pills, dark code panel; no framework                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `popup.js`        | `extension/popup.js:1`      | UI controller — mirrors `start_inspection`/`create_result_tab`: parses URLs, `chrome.storage.local` persist, `chrome.runtime.sendMessage({type:"INSPECT_URL", url, userAgent})` per URL sequentially, builds `tabsData[]`, `switchTab`, copy/export (clipboard + Blob download)                                                                                                                                                                                                                                                                                                                                      |
+| `background.js`   | `extension/background.js:1` | Service worker — mirrors `process_single_url`: `processSingleUrl(url, userAgent)` with `MAX_REDIRECTS=10`, `FETCH_TIMEOUT_MS=10000`, `setUserAgentRule`/`clearUserAgentRule` via `chrome.declarativeNetRequest.updateDynamicRules` (id 1, `modifyHeaders` for `User-Agent`), manual `fetch(redirect:'manual')` loop resolving `Location` via `new URL(location, currentUrl)`, fallback for `opaqueredirect`/status 0 via `fetch(redirect:'follow')`, header dump via `headers.entries()`, hreflang via `DOMParser` + `querySelectorAll('link[rel][hreflang]')` filtered by `rel.toLowerCase().includes('alternate')` |
+| `icons/icon*.png` | `extension/icons/`          | 16/48/128, Pillow-generated                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 Parity notes:
+
 - Threading: `root.after` → `runtime.sendMessage` + `async/await`; both keep UI responsive.
 - Redirects: `res.history` (`main.py:75-79`) → manual fetch loop (`background.js`); both cap at ~10 hops, `Location` fallback `"Unknown"` vs opaqueredirect note.
 - hreflang: `soup.find_all(..., "alternate" in x.lower())` + `has_attr("hreflang")` → identical loose logic via `rel.toLowerCase().includes('alternate')`.
@@ -132,15 +134,15 @@ Trigger: `push` to `main` when `extension/**` or workflow changes, `push` tags `
 
 ## 7. Common Tasks (for agents)
 
-| Task | How |
-|------|-----|
-| **Bump extension version & release** | Edit `extension/manifest.json:4` `version`, `git add` + `commit -m "chore: bump extension to 1.0.1"` + `push` → workflow auto-tags `v1.0.1` and publishes Release with zip. Or `git tag v1.0.1 && git push origin v1.0.1`. |
-| **Add timeout/retry option** | Desktop: `opts_frame` (`main.py:28-33`) + thread through `inspect_urls` → `process_single_url` `timeout=`. Extension: add `Spinbox` in `popup.html` opts-row, persist via `chrome.storage`, pass to `background.js` `processSingleUrl` `FETCH_TIMEOUT_MS`. |
-| **Add export** | Desktop: button in `btn_frame` (`main.py:22-25`), iterate `notebook.tabs()`. Extension: already has `Copy`/`Export .txt` in `popup.js` (`copyActive`/`exportActive` + `exportAll` on Shift). |
-| **Fix scrollbar** | Desktop: swap pack order in `create_result_tab:113-121` (scrollbar before text_area) — verify on Windows. Extension: CSS handles overflow in `.tab-contents`. |
-| **Update icons** | `python -c "from PIL import Image..."` or replace `extension/icons/*.png`; keep 16/48/128; update `manifest.json` if paths change. |
-| **Test extension locally** | Chrome: `chrome://extensions` → Load unpacked `extension/` → inspect popup via right-click → Inspect, check Service Worker console at `chrome://extensions` → *Service worker* link. |
-| **Add tests** | Desktop: `tests/` + `pytest` mock `requests.Session.get`. Extension: `node --check` already in `ci.yml`; add `web-ext lint` if needed. |
+| Task                                 | How                                                                                                                                                                                                                                                        |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bump extension version & release** | Edit `extension/manifest.json:4` `version`, `git add` + `commit -m "chore: bump extension to 1.0.1"` + `push` → workflow auto-tags `v1.0.1` and publishes Release with zip. Or `git tag v1.0.1 && git push origin v1.0.1`.                                 |
+| **Add timeout/retry option**         | Desktop: `opts_frame` (`main.py:28-33`) + thread through `inspect_urls` → `process_single_url` `timeout=`. Extension: add `Spinbox` in `popup.html` opts-row, persist via `chrome.storage`, pass to `background.js` `processSingleUrl` `FETCH_TIMEOUT_MS`. |
+| **Add export**                       | Desktop: button in `btn_frame` (`main.py:22-25`), iterate `notebook.tabs()`. Extension: already has `Copy`/`Export .txt` in `popup.js` (`copyActive`/`exportActive` + `exportAll` on Shift).                                                               |
+| **Fix scrollbar**                    | Desktop: swap pack order in `create_result_tab:113-121` (scrollbar before text_area) — verify on Windows. Extension: CSS handles overflow in `.tab-contents`.                                                                                              |
+| **Update icons**                     | `python -c "from PIL import Image..."` or replace `extension/icons/*.png`; keep 16/48/128; update `manifest.json` if paths change.                                                                                                                         |
+| **Test extension locally**           | Chrome: `chrome://extensions` → Load unpacked `extension/` → inspect popup via right-click → Inspect, check Service Worker console at `chrome://extensions` → _Service worker_ link.                                                                       |
+| **Add tests**                        | Desktop: `tests/` + `pytest` mock `requests.Session.get`. Extension: `node --check` already in `ci.yml`; add `web-ext lint` if needed.                                                                                                                     |
 
 ## 8. Verification & Testing
 
@@ -177,7 +179,7 @@ Network is live — mock in tests, don't hammer hosts, respect `timeout=10`. For
 
 ## 10. Git Conventions
 
-- Remote: `origin https://github.com/gautham-websters/URL-checker` — `main` tracks `origin/main`.
+- Remote: `origin https://github.com/friedavocadoes/URL-checker` — `main` tracks `origin/main`.
 - Commits: `fix:` / `v1` / `chore: bump extension to ...` — concise, check `git log --oneline -10` before committing.
 - `.gitignore` now properly ignores `.venv/`, `__pycache__/`, `*.zip` (old version incorrectly listed `.git` — fixed).
 - Releases: `extension/manifest.json:version` → git tag `v<version>` → GitHub Release with zip. Workflow is authoritative — don't manually create releases with different zips without updating manifest.

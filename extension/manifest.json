@@ -4,7 +4,7 @@
   "version": "2.0.1",
   "description": "Replicates curl -siL + hreflang auditing for one or more URLs — redirect hops, headers, and hreflang tags.",
   "author": "gautham-websters",
-  "homepage_url": "https://github.com/gautham-websters/URL-checker",
+  "homepage_url": "https://github.com/friedavocadoes/URL-checker",
   "action": {
     "default_popup": "popup.html",
     "default_title": "URL Inspector",
@@ -29,9 +29,7 @@
     "clipboardRead",
     "clipboardWrite"
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
