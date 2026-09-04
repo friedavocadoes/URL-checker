@@ -1,14 +1,38 @@
-name: Release Extension
+name: Release — Unified (Extension + Desktop .exe)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Unified, simple trigger — choose ONE:
+#
+#  1) Commit with version in message + manifest bump (recommended):
+#       # bump extension/manifest.json version to 1.0.1
+#       git commit -m "chore: release v1.0.1"   # any `vX.Y.Z` in message triggers release
+#       git push origin main                    # → builds zip+exe → tag v1.0.1 → Release
+#
+#  2) Direct tag (classic):
+#       git tag v1.0.1 && git push origin v1.0.1   # manifest MUST be 1.0.1 already, else fail
+#
+#  3) Manifest bump alone (implicit):
+#       # bump extension/manifest.json to 1.0.1, commit without v in message, push
+#       # workflow sees manifest != latest tag → triggers release for that manifest version
+#
+#  4) Manual dispatch:
+#       Actions → Release — Unified → Run workflow → enter 1.0.1
+#
+# Version source priority: workflow_dispatch input > tag push > commit message `vX.Y.Z` > manifest.json
+# The resolved version MUST match extension/manifest.json — otherwise the job fails
+# with a clear error so the zip (manifest) and exe (filename) stay in sync.
+# To keep it "simple and unified" we do NOT create releases on every push —
+# only when one of the above version signals is present.
+# ─────────────────────────────────────────────────────────────────────────────
 
 on:
   push:
     branches: [main]
-    tags:
-      - "v*"
+    tags: ["v*"]          # tag trigger — no paths filter so it always fires
   workflow_dispatch:
     inputs:
       version:
-        description: "Override version (e.g. 1.0.1) — leave empty to use manifest.json"
+        description: "Version to release (e.g. 1.0.1) — overrides manifest/commit/tag"
         required: false
         type: string
 
@@ -16,151 +40,324 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  # ── Resolve version + decide if we should release ──────────────────────────
+  resolve-version:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      should_release: ${{ steps.resolve.outputs.should_release }}
+      reason: ${{ steps.resolve.outputs.reason }}
+      patch_needed: ${{ steps.resolve.outputs.patch_needed }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node (for jq/zip validation)
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Resolve version
-        id: version
+      - name: Resolve version & trigger decision
+        id: resolve
         shell: bash
         run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
-            echo "Using workflow_dispatch version: $VERSION"
+          set -euo pipefail
+          MANIFEST_VERSION=$(jq -r .version extension/manifest.json)
+          echo "manifest version: $MANIFEST_VERSION"
+
+          # Latest tag reachable (for implicit bump detection)
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_VERSION=${LATEST_TAG#v}
+          echo "latest tag: $LATEST_TAG ($LATEST_VERSION)"
+
+          INPUT_VERSION="${{ inputs.version }}"
+          COMMIT_MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "")
+          echo "commit message: $COMMIT_MSG"
+          COMMIT_VERSION=$(echo "$COMMIT_MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's/^v//' || true)
+          echo "commit version: ${COMMIT_VERSION:-<none>}"
+
+          TAG_VERSION=""
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG_VERSION="${{ github.ref_name }}"
+            TAG_VERSION=${TAG_VERSION#v}
+            echo "tag push version: $TAG_VERSION"
+          fi
+
+          # Priority: input > tag > commit > manifest
+          if [ -n "$INPUT_VERSION" ]; then
+            RESOLVED="$INPUT_VERSION"
+            REASON="workflow_dispatch input v$RESOLVED"
+          elif [ -n "$TAG_VERSION" ]; then
+            RESOLVED="$TAG_VERSION"
+            REASON="tag push v$RESOLVED"
+          elif [ -n "$COMMIT_VERSION" ]; then
+            RESOLVED="$COMMIT_VERSION"
+            REASON="commit message v$RESOLVED"
           else
-            VERSION=$(jq -r .version extension/manifest.json)
+            RESOLVED="$MANIFEST_VERSION"
+            REASON="manifest v$RESOLVED"
           fi
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "::error::Could not read version from extension/manifest.json"
-            exit 1
+
+          # Strip leading v if user passed v1.0.1
+          RESOLVED=${RESOLVED#v}
+          echo "resolved version: $RESOLVED ($REASON)"
+          echo "version=$RESOLVED" >> "$GITHUB_OUTPUT"
+          echo "tag=v$RESOLVED" >> "$GITHUB_OUTPUT"
+
+          # ── Should we actually create a release on this push? ──
+          SHOULD=false
+          if [ -n "$INPUT_VERSION" ]; then
+            SHOULD=true
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            SHOULD=true
+          elif [ -n "$COMMIT_VERSION" ]; then
+            SHOULD=true
+          elif [ "$MANIFEST_VERSION" != "$LATEST_VERSION" ]; then
+            SHOULD=true
+            REASON="manifest bump $LATEST_VERSION -> $MANIFEST_VERSION"
+            echo "manifest bump detected: $REASON"
+          else
+            SHOULD=false
+            REASON="no version signal (no v in commit, manifest unchanged)"
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Resolved version: $VERSION / tag: v$VERSION"
+
+          echo "should_release=$SHOULD" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+          echo "Decision: should_release=$SHOULD ($REASON)"
+
+          # ── Sync manifest ↔ resolved ──
+          # If the resolved version came from commit/tag/input, we auto-sync the manifest
+          # so the zip and exe stay in sync — you can just `git commit -m "feat v1.0.1"` 
+          # and the workflow will patch `extension/manifest.json` to 1.0.1 for the build.
+          # We still warn so you can keep the repo tidy by bumping manifest in same commit.
+          if [ "$SHOULD" = "true" ]; then
+            SOURCE=""
+            if [ -n "$INPUT_VERSION" ]; then SOURCE="input"; elif [ -n "$TAG_VERSION" ]; then SOURCE="tag"; elif [ -n "$COMMIT_VERSION" ]; then SOURCE="commit"; fi
+            if [ -n "$SOURCE" ] && [ "$MANIFEST_VERSION" != "$RESOLVED" ]; then
+              echo "::warning::Version mismatch: $SOURCE wants v$RESOLVED but extension/manifest.json is v$MANIFEST_VERSION — auto-patching manifest for this build."
+              echo "patch_needed=true" >> "$GITHUB_OUTPUT"
+              echo "manifest=$MANIFEST_VERSION resolved=$RESOLVED source=$SOURCE"
+            else
+              echo "patch_needed=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "patch_needed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Build extension zip (Ubuntu — fast) ───────────────────────────────────
+  build-extension:
+    needs: resolve-version
+    if: needs.resolve-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Validate manifest
         shell: bash
         run: |
-          echo "Validating extension/manifest.json..."
           jq empty extension/manifest.json
-          echo "manifest_version: $(jq -r .manifest_version extension/manifest.json)"
-          echo "name: $(jq -r .name extension/manifest.json)"
-          echo "version: $(jq -r .version extension/manifest.json)"
-          # Basic MV3 checks
-          if [ "$(jq -r .manifest_version extension/manifest.json)" != "3" ]; then
-            echo "::error::manifest_version must be 3"
-            exit 1
-          fi
-          for f in popup.html popup.js popup.css background.js; do
-            if [ ! -f "extension/$f" ]; then echo "::error::Missing extension/$f"; exit 1; fi
-          done
-          echo "All required files present."
+          echo "manifest_version=$(jq -r .manifest_version extension/manifest.json) version=$(jq -r .version extension/manifest.json)"
 
-      - name: Check if tag already exists
-        id: tag_check
+      - name: Auto-sync manifest to resolved version (if commit/tag v differs)
+        if: needs.resolve-version.outputs.patch_needed == 'true'
         shell: bash
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Tag $TAG already exists — will update release in place."
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "Tag $TAG does not exist — will create."
-          fi
-          # Also check remote
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
-            echo "remote_exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "remote_exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          VERSION="${{ needs.resolve-version.outputs.version }}"
+          OLD=$(jq -r .version extension/manifest.json)
+          echo "Patching extension/manifest.json $OLD -> $VERSION for build"
+          jq --arg v "$VERSION" '.version=$v' extension/manifest.json > /tmp/manifest.json && mv /tmp/manifest.json extension/manifest.json
+          echo "Patched manifest:"
+          cat extension/manifest.json
+          echo "Note: repo's manifest on main is still $OLD — workflow will push a fix commit after release if needed."
 
-      - name: Package extension (zip)
+      - name: Package extension zip
         shell: bash
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ needs.resolve-version.outputs.version }}"
           ZIP="url-inspector-v${VERSION}.zip"
-          echo "Packaging $ZIP from extension/ ..."
-          # Ensure icons exist
+          echo "Packaging $ZIP ..."
           ls -lh extension/icons/
-          # Zip contents of extension/ (not the folder itself) so unzip yields manifest at top level
           (cd extension && zip -r "../$ZIP" . -x "*.DS_Store" -x "__MACOSX/*" -x "*.map")
           ls -lh "$ZIP"
-          echo "--- zip contents ---"
-          unzip -l "$ZIP"
-          # Also produce unpacked artifact for debugging
+          unzip -l "$ZIP" | head -n 40
           echo "ZIP_SHA256=$(sha256sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "ZIP_NAME=$ZIP" >> "$GITHUB_ENV"
 
-      - name: Create git tag (only on main push, not tag push)
-        if: steps.tag_check.outputs.exists == 'false' && github.ref_type != 'tag'
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: url-inspector-v${{ needs.resolve-version.outputs.version }}.zip
+          if-no-files-found: error
+
+  # ── Build desktop .exe (Windows PyInstaller) ───────────────────────────────
+  build-exe:
+    needs: resolve-version
+    if: needs.resolve-version.outputs.should_release == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install deps + PyInstaller
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build .exe with PyInstaller
+        shell: pwsh
+        run: |
+          $VERSION="${{ needs.resolve-version.outputs.version }}"
+          Write-Host "Building URL-Inspector.exe for v$VERSION ..."
+          # Ensure icon exists (fallback to png if ico missing)
+          if (!(Test-Path "extension/icons/icon.ico")) {
+            Write-Host "icon.ico missing — generating from png"
+            python -c "from PIL import Image; Image.open('extension/icons/icon128.png').save('extension/icons/icon.ico', sizes=[(256,256),(128,128),(48,48),(32,32),(16,16)])"
+          }
+          $iconArg = ""
+          if (Test-Path "extension/icons/icon.ico") { $iconArg = "--icon=extension/icons/icon.ico" }
+          # Windowed (no console), onefile, name includes no version yet — we rename after
+          python -m PyInstaller --onefile --windowed --name "URL-Inspector" --clean --noconfirm $iconArg main.py
+          Get-ChildItem dist/ | Format-List Name,Length
+          # Rename to versioned filename for release
+          $exe = "dist/URL-Inspector.exe"
+          $versioned = "dist/URL-Inspector-v$VERSION.exe"
+          if (Test-Path $exe) { Move-Item -Path $exe -Destination $versioned -Force; Write-Host "Renamed to $versioned" }
+          # Also keep unversioned copy for artifact simplicity
+          Copy-Item -Path $versioned -Destination "dist/URL-Inspector.exe" -Force -ErrorAction SilentlyContinue
+          (Get-FileHash $versioned -Algorithm SHA256).Hash | Out-File -FilePath "dist/SHA256.txt" -Encoding ascii
+          Get-ChildItem dist/
+
+      - name: Upload exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-exe
+          path: |
+            dist/URL-Inspector-v${{ needs.resolve-version.outputs.version }}.exe
+            dist/URL-Inspector.exe
+            dist/SHA256.txt
+          if-no-files-found: error
+
+  # ── Create unified Release (zip + exe) ───────────────────────────────────
+  release:
+    needs: [resolve-version, build-extension, build-exe]
+    if: needs.resolve-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare files
         shell: bash
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          VERSION="${{ steps.version.outputs.version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "Release $TAG — URL Inspector & Multi-Checker v$VERSION"
-          git push origin "$TAG"
-          echo "Pushed tag $TAG"
+          VERSION="${{ needs.resolve-version.outputs.version }}"
+          TAG="${{ needs.resolve-version.outputs.tag }}"
+          echo "Version: $VERSION Tag: $TAG Reason: ${{ needs.resolve-version.outputs.reason }}"
+          ls -R artifacts
+          # Flatten artifacts (download-artifact v4 creates subdirs per artifact)
+          mkdir -p release-files
+          cp artifacts/extension-zip/*.zip release-files/ 2>/dev/null || cp artifacts/extension-zip/url-inspector-*.zip release-files/ || true
+          cp artifacts/desktop-exe/*.exe release-files/ 2>/dev/null || true
+          cp artifacts/desktop-exe/SHA256.txt release-files/ 2>/dev/null || true
+          ls -lh release-files/
+          # Compute hashes for body
+          ZIP="release-files/url-inspector-v${VERSION}.zip"
+          EXE="release-files/URL-Inspector-v${VERSION}.exe"
+          if [ -f "$ZIP" ]; then echo "ZIP_SHA256=$(sha256sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_ENV"; fi
+          if [ -f "$EXE" ]; then echo "EXE_SHA256=$(sha256sum "$EXE" | cut -d' ' -f1)" >> "$GITHUB_ENV"; fi
+          echo "ZIP_NAME=$(basename "$ZIP" 2>/dev/null || echo url-inspector-v${VERSION}.zip)" >> "$GITHUB_ENV"
+          echo "EXE_NAME=$(basename "$EXE" 2>/dev/null || echo URL-Inspector-v${VERSION}.exe)" >> "$GITHUB_ENV"
 
-      - name: Determine release tag
-        id: release_tag
+      - name: Create git tag if missing (for commit/dispatch triggers)
+        if: github.ref_type != 'tag'
+        shell: bash
+        run: |
+          TAG="${{ needs.resolve-version.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists locally"
+          elif git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+            echo "Tag $TAG already exists on remote"
+          else
+            echo "Creating tag $TAG"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "Release $TAG — URL Inspector & Multi-Checker v${{ needs.resolve-version.outputs.version }} (${{ needs.resolve-version.outputs.reason }})"
+            git push origin "$TAG"
+          fi
+
+      - name: Determine release tag name
+        id: rel_tag
         shell: bash
         run: |
           if [ "${{ github.ref_type }}" = "tag" ]; then
             echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${{ steps.version.outputs.tag }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ needs.resolve-version.outputs.tag }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create / Update GitHub Release
+      - name: Create / Update GitHub Release (zip + exe)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.release_tag.outputs.tag }}
-          name: "URL Inspector ${{ steps.release_tag.outputs.tag }}"
-          # If workflow was triggered by tag push, reuse tag; otherwise use manifest version.
-          # On re-run, allow updating existing release.
+          tag_name: ${{ steps.rel_tag.outputs.tag }}
+          name: "URL Inspector ${{ steps.rel_tag.outputs.tag }}"
           draft: false
           prerelease: false
           generate_release_notes: true
-          append_body: false
           body: |
-            ## URL Inspector & Multi-Checker ${{ steps.release_tag.outputs.tag }}
+            ## URL Inspector & Multi-Checker ${{ steps.rel_tag.outputs.tag }}
 
-            Browser extension release — replicates `curl -siL` + `hreflang` auditing in one click.
+            Unified release — **both** browser extension and desktop app.
 
-            ### Install (Chrome / Edge / Brave)
+            **Trigger:** `${{ needs.resolve-version.outputs.reason }}` (manifest `v${{ needs.resolve-version.outputs.version }}`)
 
-            1. Download `url-inspector-${{ steps.release_tag.outputs.tag }}.zip` below (or `url-inspector-v*.zip`).
-            2. Unzip locally.
-            3. Open `chrome://extensions` (or `edge://extensions`) → enable **Developer mode** (top-right toggle).
-            4. Click **Load unpacked** → select the unzipped folder (must contain `manifest.json` at top level).
-            5. Pin the extension (puzzle icon → pin) and click it to inspect URLs.
+            ### Included files
+            - `url-inspector-v${{ needs.resolve-version.outputs.version }}.zip` — Chrome/Edge/Brave extension (unzip → `chrome://extensions` → Load unpacked `extension/`)
+            - `URL-Inspector-v${{ needs.resolve-version.outputs.version }}.exe` — Windows desktop app (no Python needed, double-click to run)
 
-            > **Firefox:** `about:debugging` → *This Firefox* → *Load Temporary Add-on* → select `extension/manifest.json`. For permanent install, package as `.xpi` via `web-ext`.
+            ### Install — Extension (recommended)
+            1. Download `url-inspector-v${{ needs.resolve-version.outputs.version }}.zip`
+            2. Unzip
+            3. `chrome://extensions` → Developer mode → Load unpacked → select unzipped folder
+            4. Pin and click the icon
 
-            ### Zip checksum
-            `SHA256: ${{ env.ZIP_SHA256 }}`
+            ### Install — Desktop .exe (fallback)
+            1. Download `URL-Inspector-v${{ needs.resolve-version.outputs.version }}.exe`
+            2. Double-click (Windows may show SmartScreen → *More info* → *Run anyway* for unsigned exe)
+            3. No install, no Python required
+
+            ### Checksums
+            - `url-inspector-v${{ needs.resolve-version.outputs.version }}.zip` SHA256: `${{ env.ZIP_SHA256 }}`
+            - `URL-Inspector-v${{ needs.resolve-version.outputs.version }}.exe` SHA256: `${{ env.EXE_SHA256 }}`
+
+            ### How releases work
+            - **Simple trigger:** include `vX.Y.Z` in commit message *and* bump `extension/manifest.json` to same `X.Y.Z`, then `git push origin main`
+            - **Or:** `git tag vX.Y.Z && git push origin vX.Y.Z`
+            - **Or:** bump manifest alone (workflow sees `manifest != latest tag`)
+            - **Or:** Actions → Run workflow → enter version
+            - Workflow fails if commit/tag version ≠ manifest version so zip and exe stay in sync.
 
             ---
-            *Auto-generated by `.github/workflows/release.yml` on `${{ github.sha }}`*
+            *Built by `.github/workflows/release.yml` @ `${{ github.sha }}`*
           files: |
-            url-inspector-v${{ steps.version.outputs.version }}.zip
+            release-files/url-inspector-v${{ needs.resolve-version.outputs.version }}.zip
+            release-files/URL-Inspector-v${{ needs.resolve-version.outputs.version }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifact (CI)
+      - name: Upload combined artifacts (debug)
         uses: actions/upload-artifact@v4
         with:
-          name: url-inspector-${{ steps.version.outputs.tag }}
-          path: url-inspector-v${{ steps.version.outputs.version }}.zip
+          name: release-files-${{ needs.resolve-version.outputs.tag }}
+          path: release-files/
           if-no-files-found: error
