@@ -317,12 +317,8 @@ jobs:
           body: |
             ## URL Inspector & Multi-Checker ${{ steps.rel_tag.outputs.tag }}
 
-            Unified release — **both** browser extension and desktop app.
-
-            **Trigger:** `${{ needs.resolve-version.outputs.reason }}` (manifest `v${{ needs.resolve-version.outputs.version }}`)
-
             ### Included files
-            - `url-inspector-v${{ needs.resolve-version.outputs.version }}.zip` — Chrome/Edge/Brave extension (unzip → `chrome://extensions` → Load unpacked `extension/`)
+            - `url-inspector-v${{ needs.resolve-version.outputs.version }}.zip` — Chrome/Edge/Brave extension
             - `URL-Inspector-v${{ needs.resolve-version.outputs.version }}.exe` — Windows desktop app (no Python needed, double-click to run)
 
             ### Install — Extension (recommended)
@@ -339,13 +335,6 @@ jobs:
             ### Checksums
             - `url-inspector-v${{ needs.resolve-version.outputs.version }}.zip` SHA256: `${{ env.ZIP_SHA256 }}`
             - `URL-Inspector-v${{ needs.resolve-version.outputs.version }}.exe` SHA256: `${{ env.EXE_SHA256 }}`
-
-            ### How releases work
-            - **Simple trigger:** include `vX.Y.Z` in commit message *and* bump `extension/manifest.json` to same `X.Y.Z`, then `git push origin main`
-            - **Or:** `git tag vX.Y.Z && git push origin vX.Y.Z`
-            - **Or:** bump manifest alone (workflow sees `manifest != latest tag`)
-            - **Or:** Actions → Run workflow → enter version
-            - Workflow fails if commit/tag version ≠ manifest version so zip and exe stay in sync.
 
             ---
             *Built by `.github/workflows/release.yml` @ `${{ github.sha }}`*
