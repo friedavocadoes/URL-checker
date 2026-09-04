@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "URL Inspector & Multi-Checker",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Replicates curl -siL + hreflang auditing for one or more URLs — redirect hops, headers, and hreflang tags.",
   "author": "gautham-websters",
   "homepage_url": "https://github.com/gautham-websters/URL-checker",
