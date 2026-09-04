@@ -1,90 +1,79 @@
 # URL Inspector & Multi-Checker
 
-Replicates `curl -siL` + `hreflang` auditing for one or more URLs.
+> `curl -siL` + `hreflang` audit for any URL — as a browser extension or desktop app.
 
-- **Browser extension** (recommended, easiest) — `extension/` Manifest V3 for Chrome/Edge/Brave/Firefox
-- **Desktop GUI fallback** — `python main.py` (tkinter, single-file)
+<p align="center">
+  <a href="https://github.com/gautham-websters/URL-checker/releases/latest"><img src="https://img.shields.io/github/v/release/gautham-websters/URL-checker?label=latest&color=4285F4&style=for-the-badge" alt="latest release"></a>
+  <a href="https://github.com/gautham-websters/URL-checker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/gautham-websters/URL-checker?style=for-the-badge&color=00A562" alt="MIT"></a>
+  <img src="https://img.shields.io/badge/manifest-v3-FF7139?style=for-the-badge&logo=googlechrome&logoColor=white" alt="MV3">
+</p>
 
-For each URL it reports:
+<p align="center">
+  <a href="https://github.com/gautham-websters/URL-checker/releases/latest"><img src="https://img.shields.io/badge/Download-Extension_ZIP-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Download Extension"></a>
+  <a href="https://github.com/gautham-websters/URL-checker/releases/latest"><img src="https://img.shields.io/badge/Download-Desktop_EXE-00A562?style=for-the-badge&logo=windows&logoColor=white" alt="Download EXE"></a>
+</p>
 
-1. **HTTP redirect hops & status codes**
-2. **Final response headers**
-3. **`hreflang` tags** (`<link rel="alternate" hreflang="...">`)
-
-GitHub: `gautham-websters/URL-checker` — releases are auto-published via `.github/workflows/release.yml`.
-
----
-
-## Quick Start — Browser Extension (Easiest)
-
-1. **Download latest release** from [Releases](../../releases) → `url-inspector-v*.zip` (or clone this repo).
-2. Unzip.
-3. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select the unzipped folder (or repo's `extension/` folder).
-4. Pin & click the extension → paste URLs (one per line) → **Run Inspection**.
-
-See `extension/README.md` for Firefox, packaging, and troubleshooting.
+**For each URL:** redirect hops & status codes · final headers · `<link rel="alternate" hreflang>` tags.
 
 ---
 
-## Quick Start — Desktop App
+### Download
+
+Grab the latest from **[Releases](../../releases/latest)**:
+
+- **`url-inspector-v*.zip`** → extension · **`*URL-Inspector-v*.exe`** → Windows app (no Python needed)
+
+> Buttons above go to the latest release — pick your file under **Assets**.
+
+### Use
+
+**Extension (recommended)**
+1. Unzip → `chrome://extensions` → Developer mode → **Load unpacked** → pick unzipped folder
+2. Pin it → paste URLs (one per line) → **Run Inspection**
+
+*Firefox:* `about:debugging` → Load Temporary Add-on → `extension/manifest.json`
+
+**Desktop**
+```powershell
+# .exe: double-click URL-Inspector-v*.exe
+# or Python:
+pip install -r requirements.txt; python main.py
+```
+
+Paste `https://example.com` and `https://httpbin.org/redirect/2` to try redirects + hreflang.
+
+---
+
+### For Developers
 
 ```powershell
-# 1. venv
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-
-# 2. deps
-pip install -r requirements.txt
-
-# 3. run (requires display — 1000×700 window)
-python main.py
+git clone https://github.com/gautham-websters/URL-checker && cd URL-checker
+pip install -r requirements.txt; python main.py          # desktop
+# extension: chrome://extensions → Load unpacked → extension/
 ```
 
-Default textarea contains `https://google.com`.
+Releases are automated: bump `extension/manifest.json` version + `git commit -m "chore: release vX.Y.Z"` + `git push`, or `git tag vX.Y.Z && git push origin vX.Y.Z`. Zip + exe are attached automatically.
 
 ---
 
-## Repository Layout
+### Contributing
 
-```
-URL/
-├── extension/               # Browser extension (MV3) — popup + background + icons
-│   ├── manifest.json
-│   ├── popup.html / popup.js / popup.css
-│   ├── background.js
-│   ├── icons/icon{16,48,128}.png
-│   └── README.md
-├── .github/workflows/
-│   ├── release.yml          # Auto-release on push to main (manifest version → tag → zip → GitHub Release)
-│   └── ci.yml               # Validate manifest / JS syntax / Python compile
-├── main.py                  # Desktop tkinter app (126 lines, URLInspectorApp)
-├── requirements.txt         # requests, beautifulsoup4, etc. (desktop only)
-├── opencode.json            # opencode project config
-├── AGENTS.md                # Agent instructions (loaded via opencode.json)
-└── README.md                # this file
-```
+Contributions welcome! Fork, branch, open a PR. Please keep `main.py` single-file and extension vanilla JS (no bundler).
+
+Found a bug? Have an idea? **[Open an issue](../../issues/new)** — we’d love to hear from you.
 
 ---
 
-## Releases (Automation)
+### Acknowledgements
 
-Push to `main` affecting `extension/**` → workflow reads `extension/manifest.json` `version`, creates tag `v<version>` (if missing), zips `extension/` → `url-inspector-v<version>.zip`, publishes GitHub Release with auto release notes.
+Thanks to the open-source projects that make this possible:
 
-Manual:
+**Python app:** [Requests](https://requests.readthedocs.io/), [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/) + [Soupsieve](https://facelessuser.github.io/soupsieve/), [Certifi](https://github.com/certifi/python-certifi), [charset-normalizer](https://github.com/Ousret/charset_normalizer), [Idna](https://github.com/kjd/idna), [urllib3](https://urllib3.readthedocs.io/), [PyInstaller](https://pyinstaller.org/) & [Pillow](https://python-pillow.org/) for the `.exe` and icons, and Python’s `tkinter`.
 
-- Bump `extension/manifest.json` `version` (e.g. `1.0.1`).
-- `git add extension/manifest.json && git commit -m "chore: bump extension to 1.0.1" && git push origin main`
+**Extension:** [Chrome Extensions MV3](https://developer.chrome.com/docs/extensions/develop/concepts/what-are-extensions) + `declarativeNetRequest`, `DOMParser`.
 
-Or trigger manually: Actions → _Release Extension_ → _Run workflow_ (optional version override).
+Built with Python 3.13.
 
-Tag-triggered: `git tag v1.0.1 && git push origin v1.0.1` also builds the same release.
+### License
 
-Download zips from the Releases page. Verify SHA256 shown in release body.
-
----
-
-## Versioning
-
-- Extension store version = `extension/manifest.json` `version` (semver).
-- Git tag = `v<version>` (e.g. `v1.0.0`).
-- Desktop `main.py` has no version — it is coupled to extension releases for parity.
+MIT © 2026 gautham — see [LICENSE](LICENSE).
