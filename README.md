@@ -10,10 +10,10 @@
 
 <!-- Direct download — always latest, no need to pick from Assets -->
 <p align="center">
-  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest/download/url-inspector.zip" style="display:inline-block;background:#1a73e8;color:#ffffff !important;padding:14px 28px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none;margin:8px 6px;box-shadow:0 6px 18px rgba(26,115,232,0.35);border:2px solid #1557b0;letter-spacing:0.2px;">⬇️ Download Extension ZIP</a>
-  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest/download/URL-Inspector.exe" style="display:inline-block;background:#0f9d58;color:#ffffff !important;padding:14px 28px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none;margin:8px 6px;box-shadow:0 6px 18px rgba(15,157,88,0.35);border:2px solid #0b7a43;letter-spacing:0.2px;">⬇️ Download Desktop EXE</a>
+  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest#assets" style="display:inline-block;background:#1a73e8;color:#ffffff !important;padding:14px 28px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none;margin:8px 6px;box-shadow:0 6px 18px rgba(26,115,232,0.35);border:2px solid #1557b0;letter-spacing:0.2px;">⬇️ Download Extension ZIP</a>
+  <a href="https://github.com/friedavocadoes/URL-checker/releases/latest#assets" style="display:inline-block;background:#0f9d58;color:#ffffff !important;padding:14px 28px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none;margin:8px 6px;box-shadow:0 6px 18px rgba(15,157,88,0.35);border:2px solid #0b7a43;letter-spacing:0.2px;">⬇️ Download Desktop EXE</a>
 </p>
-<p align="center" style="margin-top:-6px;color:#64748b;font-size:12px;">One click → direct download of latest build (no need to browse Assets)</p>
+<p align="center" style="margin-top:-6px;color:#64748b;font-size:12px;">One click → jump to Assets for the latest build (<code>url-inspector-v*.zip</code> · <code>URL-Inspector-v*.exe</code>)</p>
 
 **For each URL:** redirect hops & status codes · final headers · `<link rel="alternate" hreflang>` tags.
 
@@ -21,7 +21,7 @@
 
 ### Download
 
-**Direct (one click):** use the big buttons above — always the latest `url-inspector.zip` / `URL-Inspector.exe`.
+**Direct (one click):** use the big buttons above — jump to Assets for the latest `url-inspector-v*.zip` / `URL-Inspector-v*.exe`.
 
 Or browse **[Releases](../../releases/latest) → Assets** for versioned files (`url-inspector-v*.zip`, `URL-Inspector-v*.exe`).
 
