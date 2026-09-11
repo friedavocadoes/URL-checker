@@ -126,7 +126,8 @@ async function processSingleUrl(url, userAgent) {
           method: "GET",
           headers,
           redirect: "manual",
-          signal: controller.signal
+          signal: controller.signal,
+          cache: "no-store"
         });
       } finally {
         clearTimeout(timeoutId);
@@ -150,7 +151,8 @@ async function processSingleUrl(url, userAgent) {
             method: "GET",
             headers,
             redirect: "follow",
-            signal: followController.signal
+            signal: followController.signal,
+            cache: "no-store"
           });
           finalResponse = followRes;
           finalHeaders = followRes.headers;
